@@ -1,0 +1,19 @@
+{
+  "name": "developing-secure-software-coursework",
+  "version": "1.0.0",
+  "description": "Website that is protected agasint common weaknesses ",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RobWalton1/Developing-Secure-Software-Coursework.git"
+  },
+  "author": "Group UG23",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RobWalton1/Developing-Secure-Software-Coursework/issues"
+  },
+  "homepage": "https://github.com/RobWalton1/Developing-Secure-Software-Coursework#readme"
+}
