@@ -6,7 +6,9 @@ const ejs = require('ejs');
 //Local host port, Viewable on localhost:3000
 const port = 3000;
 
+//Setting view engine to ejs
 app.set('view engine', 'ejs');
+
 
 //Will set up db connection here soon
 
@@ -15,6 +17,11 @@ app.set('view engine', 'ejs');
 app.get('/', (req, res) => {
     res.render('index');
 });
+
+app.get('/home', (req, res) => {
+    res.render('home');
+});
+
 
 //Starts the server
 app.listen(port, () => {
