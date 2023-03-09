@@ -4,7 +4,7 @@
   "description": "Website that is protected agasint common weaknesses ",
   "main": "index.js",
   "scripts": {
-    "test": "npm run start"
+    "start": "node index.js --watch ./views"
   },
   "repository": {
     "type": "git",
@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/RobWalton1/Developing-Secure-Software-Coursework/issues"
   },
-  "homepage": "https://github.com/RobWalton1/Developing-Secure-Software-Coursework#readme"
+  "homepage": "https://github.com/RobWalton1/Developing-Secure-Software-Coursework#readme",
+  "dependencies": {
+    "ejs": "^3.1.8",
+    "express": "^4.18.2"
+  }
 }
