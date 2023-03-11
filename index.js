@@ -2,6 +2,8 @@
 const express = require('express');
 const app = express();
 const ejs = require('ejs');
+const pg = require('pg');
+const bodyParser = require('body-parser');
 
 //Local host port, Viewable on localhost:3000
 const port = 3000;
@@ -10,8 +12,16 @@ const port = 3000;
 app.set('view engine', 'ejs');
 
 
-//Will set up db connection here soon
+//Creating connection to database, edit here if needed
+const pool = new pg.Pool({
+    user: 'postgres',
+    host: 'localhost',
+    database: 'secureSoftware',
+    password: 'password',
+    port: 5432,
+});
 
+app.use(bodyParser.urlencoded({ extended: true }));
 
 //Routes
 app.get('/', (req, res) => {
@@ -20,6 +30,34 @@ app.get('/', (req, res) => {
 
 app.get('/home', (req, res) => {
     res.render('home');
+});
+
+app.get('/newPost', (req, res) => {
+    res.render('newPost');
+});
+
+//Selects all from the table
+app.get('/', (req, res) => {
+    pool.query('SELECT * FROM posts ORDER BY date DESC', (error, result) => {
+        if (error) {
+            console.log(error);
+        } else {
+            res.render('home', { posts: result.rows });
+        }
+    });
+});
+
+//Adds posts to the table
+app.post('/', (req, res) => {
+    const title = req.body.title;
+    const content = req.body.content;
+    pool.query('INSERT INTO posts (title, content) VALUES ($1, $2)', [title, content], (error, result) => {
+        if (error) {
+            console.log(error);
+        } else {
+            res.redirect('/');
+        }
+    });
 });
 
 
