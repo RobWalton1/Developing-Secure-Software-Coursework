@@ -28,24 +28,20 @@ app.get('/', (req, res) => {
     res.render('index');
 });
 
-app.get('/home', (req, res) => {
-    res.render('home');
-});
-
 app.get('/newPost', (req, res) => {
     res.render('newPost');
 });
 
-//Selects all from the table
-app.get('/', (req, res) => {
+// Selects all from the table and provides the route to the homepage, Don't be thick like me and have two routes so the sql query doesn't work
+app.get('/home', (req, res) => {
     pool.query('SELECT * FROM posts ORDER BY date DESC', (error, result) => {
-        if (error) {
-            console.log(error);
-        } else {
-            res.render('home', { posts: result.rows });
-        }
+      if (error) {
+        console.log(error);
+      } else {
+        res.render('home', { posts: result.rows });
+      }
     });
-});
+  });
 
 //Adds posts to the table
 app.post('/', (req, res) => {
@@ -55,7 +51,7 @@ app.post('/', (req, res) => {
         if (error) {
             console.log(error);
         } else {
-            res.redirect('/');
+            res.redirect('/home');
         }
     });
 });
