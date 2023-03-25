@@ -2,7 +2,6 @@ const LocalStrategy = require("passport-local").Strategy;
 const { pool } = require("./dbConfig");
 const bcrypt = require("bcrypt");
 const { authenticate } = require("passport");
-const {condiments} = require("./condiments")
 
 
 function initalize (passport) {
@@ -12,18 +11,18 @@ function initalize (passport) {
                 if (error) {
                     throw error;
                 } else {
+                    console.log(results.rows)
                     if (results.rows.length > 0) {
                         const user = results.rows[0];
-                        const seasonedPassword = user.salt + password;
-                        bcrypt.compare(seasonedPassword, user.password, (error, isMatch) => {
+
+                        bcrypt.compare(password, user.password, (error, isMatch) => {
                             if (error) {
                                 throw error;
                             } else if (isMatch) {
                                 return done(null, user)
                                 //Password does not match the stored password for this username
                             } else {
-                                return done(null, false, {messa
-                                    : "Username and/or Password do not match"})
+                                return done(null, false, {message: "Username and/or Password do not match"})
                             }
                         })
                     } else {
