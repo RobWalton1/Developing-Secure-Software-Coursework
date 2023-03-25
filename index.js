@@ -2,13 +2,12 @@
 const express = require('express');
 const app = express();
 const { pool } = require("./dbConfig");
-const ejs = require('ejs');
-const pg = require('pg');
 const bodyParser = require('body-parser');
 const bcrypt = require("bcrypt");
 const session = require('express-session');
 const flash = require('express-flash');
 const passport = require('passport');
+const condiments = require("./condiments")
 
 //Setting up stirage of a users login details
 const initializePassport = require("./passportConfig")
@@ -96,15 +95,7 @@ app.post('/', (req, res) => {
 
 app.post('/register', async (req, res) => {
     let {username, email, password, password2} = req.body;
-
-    console.log(
-        username,
-        email,
-        password,
-        password2
-    )
     let errors = [];
-
     //Password validation
     if (!username) {
         errors.push({message: "Please enter a username"})
@@ -131,7 +122,9 @@ app.post('/register', async (req, res) => {
     if (errors.length > 0) {
         res.render("register", {errors})
     } else {
-        let hashedPassword = await bcrypt.hash(password, 10)
+        let salt = condiments.generateSalt(64)
+        let seasonedPassword = salt + password
+        let hashedPassword = await bcrypt.hash(seasonedPassword, 10)
         pool.query('SELECT * FROM users WHERE username = $1 ',[username] ,(error, results) => {
             if (error) {
                 console.log(error);
@@ -150,12 +143,11 @@ app.post('/register', async (req, res) => {
                                 res.render("register", {errors})
                                 
                             } else {
-                                pool.query("INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, password",
-                                [username, email, hashedPassword], (error, results) => {
+                                pool.query("INSERT INTO users (username, email, password, salt) VALUES ($1, $2, $3, $4) RETURNING id",
+                                [username, email, hashedPassword, salt], (error, results) => {
                                     if (error) {
                                         throw error
                                     } else {
-                                        console.log(results.rows)
                                         req.flash('success_message', "You are now registered. Please login")
                                         res.redirect('/login')
                                     }
