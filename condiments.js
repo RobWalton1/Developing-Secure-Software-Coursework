@@ -1,4 +1,3 @@
-const { pool } = require("./dbConfig");
 
 const saltCharacters ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
