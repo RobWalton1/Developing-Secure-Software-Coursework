@@ -12,6 +12,7 @@ const condiments = require("./condiments")
 const { authenticator } = require('otplib')
 const QRCode = require('qrcode');
 const accountAuth = require('./accountAuthentication')
+const crypto = require('crypto');
 require('dotenv').config();
 
 // Global varaible to keep track if a user is logged into the system
@@ -25,13 +26,24 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(flash());
 
-//controls the session for the system
+//Generates secure session ID
+function secureSessionId() {
+    return crypto.randomBytes(64).toString('hex');
+  }
+
+//controls the session for the system, Session hijacking prevention methods are used.
 app.use(session({
     secret: process.env.TOKEN_SECRET,
     resave: false,
-    saveUninitialized: false
-
-}))
+    saveUninitialized: false,
+    genid: secureSessionId, // Uses the secure session ID function to generate a session ID
+    rolling: true, //Regenerates the session ID on every request
+    cookie: {
+        secure: true, //Uses only secure cookies
+        httpOnly: true, //Prevents client side JS from reading the cookie
+        maxAge: 600000 // Limits the session lifetime to 10 minutes
+      }
+    }))
 
 // Manages the token 
 const tokenMiddleware = ejwt({
@@ -150,7 +162,6 @@ app.post('/register', async (req, res) => {
     }
 });
 
-
 app.post('/register-2fa', (req, res) => {
     if (!req.session.userLoginDetails) {
       return res.redirect('/')
@@ -195,6 +206,9 @@ async function authenticateRegister(userLoginDetails, code, req, res, returnUrl)
 
 async function authenticateLogin(userLoginDetails,password, code, req, res, returnUrl) {
     const { rows } = await pool.query('SELECT email, password, salt, secret FROM users WHERE username = $1 OR email = $2', [userLoginDetails, userLoginDetails])
+    //Creating a delay between 100ms and 1500ms for account enumeration prevention
+    var delay = Math.floor(Math.random() * 100) + 1400;
+    await new Promise(resolve => setTimeout(resolve, delay));
     if (rows.length <= 0) {
         req.flash('success_message', "The username, password and/or authentication code are incorrect. Please try again. ")
         return res.redirect(returnUrl)
@@ -212,7 +226,6 @@ async function authenticateLogin(userLoginDetails,password, code, req, res, retu
                 req.flash('success_message', "The username, password and/or authentication code are incorrect. Please try again. ")
                 return res.redirect(returnUrl)
             }
-
             req.session.qr = null
             req.session.userLoginDetails = null
             isUserLoggedIn = true
