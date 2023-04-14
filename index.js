@@ -36,6 +36,7 @@ app.use(session({
     secret: process.env.TOKEN_SECRET,
     resave: false,
     saveUninitialized: false,
+    /*
     genid: secureSessionId, // Uses the secure session ID function to generate a session ID
     rolling: true, //Regenerates the session ID on every request
     cookie: {
@@ -43,6 +44,7 @@ app.use(session({
         httpOnly: true, //Prevents client side JS from reading the cookie
         maxAge: 600000 // Limits the session lifetime to 10 minutes
       }
+      */
     }))
 
 // Manages the token 
@@ -152,6 +154,7 @@ app.post('/register', async (req, res) => {
                     if (err) {
                         throw err
                     }
+                    console.log("Made it this far")
                     req.session.qr = url
                     req.session.userLoginDetails = username
 
