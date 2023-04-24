@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Error</title>
+</head>
+<body>
+  <h1>Error</h1>
+  <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+    <ul>
+      <% errors.forEach(function(error) { %>
+        <li><%= error.msg %></li>
+      <% }); %>
+    </ul>
+  <% } else { %>
+    <p>Unknown error occurred.</p>
+  <% } %>
+  <script>
+    window.onload = function() {
+      <% if (typeof error !== 'undefined' && error.length > 0) { %>
+        alert('Error: <%= error[0].msg %>');
+      <% } else { %>
+        alert('Error displayed in popup.');
+      <% } %>
+    };
+  </script>
+</body>
+</html>
