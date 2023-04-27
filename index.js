@@ -103,6 +103,23 @@ app.get('/home', (req, res) => {
     });
   });
 
+  app.get("/", async (req, res) => {
+    let results = {}
+    results.rows = []
+    try {
+        const id = req.query.id;
+
+        results = await pool.query(`select * from users where id = $1`, [id])
+    }
+    catch (e) {
+        console.log("Error")
+    }
+    finally {
+        res.setHeader("content-type", "application/json")
+        res.send(JSON.stringify(results.rows))
+    }
+  })
+
 //Adds posts to the table
 app.post('/', (req, res) => {
     const title = req.body.title;
