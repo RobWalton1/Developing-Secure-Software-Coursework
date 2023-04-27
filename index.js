@@ -23,7 +23,7 @@ const port = 3000;
 
 //Setting view engine to ejs
 app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(flash());
 
 //Generates secure session ID
@@ -36,15 +36,13 @@ app.use(session({
     secret: process.env.TOKEN_SECRET,
     resave: false,
     saveUninitialized: false,
-    /*
     genid: secureSessionId, // Uses the secure session ID function to generate a session ID
     rolling: true, //Regenerates the session ID on every request
     cookie: {
-        secure: true, //Uses only secure cookies
+        secure: false, //Uses only secure cookies
         httpOnly: true, //Prevents client side JS from reading the cookie
         maxAge: 600000 // Limits the session lifetime to 10 minutes
       }
-      */
     }))
 
 // Manages the token 
@@ -67,8 +65,11 @@ app.get('/register', checkAuthenticated, (req, res) => {
 
 app.get('/register-2fa', (req, res) => {
     //Checks to see if a QR code has been generated before rendering this page
+    console.log("Checking for qr code")
     if (!req.session.qr) {
+        console.log("Redirected to home")
       return res.redirect('/')
+      //console.log("No qr code found")
     }
     return res.render('register-2fa.ejs', { qr: req.session.qr })
   })
