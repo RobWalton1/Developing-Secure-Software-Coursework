@@ -2,7 +2,7 @@
 const { pool } = require("./dbConfig");
 require('dotenv').config();
 
-async function validateInput(username, email, password, password2) {
+async function validateInput(username=null, email=null, password=null, password2=null) {
     errors = []
     if (!username) {
         errors.push("Please enter a username")
