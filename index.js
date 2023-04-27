@@ -39,7 +39,7 @@ app.use(session({
     genid: secureSessionId, // Uses the secure session ID function to generate a session ID
     rolling: true, //Regenerates the session ID on every request
     cookie: {
-        secure: false, //Uses only secure cookies
+        secure: false, //Uses only secure cookies, KEEP SET TO FALSE WHEN RUNNING LOCALLY BUT SET TO TRUE WHEN RUNNING OVER HTTPS
         httpOnly: true, //Prevents client side JS from reading the cookie
         maxAge: 600000 // Limits the session lifetime to 10 minutes
       }
