@@ -63,6 +63,10 @@ app.get('/register', checkAuthenticated, (req, res) => {
     res.render('register');
 });
 
+app.get('/results', (req, res) => {
+    res.render('results');
+});
+
 app.get('/register-2fa', (req, res) => {
     //Checks to see if a QR code has been generated before rendering this page
     console.log("Checking for qr code")
@@ -127,7 +131,8 @@ app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
       }
     });
   });
-  
+
+
 
 //Adds posts to the table
 app.post('/', (req, res) => {
@@ -160,6 +165,19 @@ app.post('/updatePost', (req, res) => {
             }
         });
     });
+
+//Searches for posts by name
+app.post('/search', (req, res) => {
+    const search = req.body.search;
+    pool.query('SELECT * from posts WHERE title = $1', [search], (error, result) => {
+        if (error) {
+            throw error
+        } else {
+            res.render('results', { posts: result.rows, usersSessionID: req.session.user_id });
+        }
+    });
+});
+
 
 
 app.post('/register', async (req, res) => {

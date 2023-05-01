@@ -8,11 +8,10 @@
   </head>
   <body>
     <a href="/logout">Logout</a>
+    <a href="/home">home</a>
     <div class = "header">
-      <h1>Super secure blog about cybersecurity</h1>
+      <h1>Search Results</h1>
     </div>
-    <h1>How did you hack us</h1>
-    <p>Security maintained by McAfee</p>
     <form action = '/search' method="POST">
       <input type="text" name="search" placeholder="Search..">
       <button type="submit">Search</button>
@@ -29,6 +28,5 @@
         </li>
       <% }); %>
     </ul>
-    <a href="/newPost"> Create a post</a>
   </body>
 </html>
