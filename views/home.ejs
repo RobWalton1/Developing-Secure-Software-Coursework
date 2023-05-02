@@ -25,6 +25,10 @@
           <p><%= post.date %></p>
           <% if (usersSessionID === post.user_id.toString()) { %>
             <a href="/editPost/<%= post.id %>">Edit post</a>
+            <form action="/deletePost" method="POST">
+              <input type="hidden" name="post_id" value="<%= post.id %>">
+              <button type="submit">Delete post</button>
+            </form>
           <% } %>
         </li>
       <% }); %>
