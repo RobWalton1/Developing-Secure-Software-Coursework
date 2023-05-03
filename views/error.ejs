@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Error</title>
-</head>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/styles.css">
+    <title>Error</title>
+  </head>
 <body>
   <h1>Error</h1>
   <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
@@ -12,7 +15,8 @@
       <% }); %>
     </ul>
   <% } else { %>
-    <p>Unknown error occurred.</p>
+    <p>Error displayed in popup.</p>
+    <a href="newPost">Return to posts</a>
   <% } %>
   <script>
     window.onload = function() {
@@ -25,3 +29,4 @@
   </script>
 </body>
 </html>
+

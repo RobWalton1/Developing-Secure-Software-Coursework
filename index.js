@@ -12,6 +12,27 @@ const condiments = require("./condiments")
 const { authenticator } = require('otplib')
 const QRCode = require('qrcode');
 const accountAuth = require('./accountAuthentication')
+const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
+const csrfProtection = csrf({
+    cookie: {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+    },
+  });
+  
+const { doubleCsrf } = require("csrf-csrf");
+
+function generateCSRFtoken()
+{
+    const token = crypto.randomBytes(16).toString('hex');
+    return token;
+}
+const csrfToken = generateCSRFtoken();
+sessionStorage.setItem('csrfToken', csrfToken);
+
+
 require('dotenv').config();
 
 // Global varaible to keep track if a user is logged into the system
@@ -25,6 +46,8 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(flash());
 
+app.use(cookieParser());
+
 //controls the session for the system
 app.use(session({
     secret: process.env.TOKEN_SECRET,
@@ -32,6 +55,11 @@ app.use(session({
     saveUninitialized: false
 
 }))
+//app.use(csrfProtection);
+
+
+//csrf library for creating csrf cookies in forms, requires cookie-parser
+
 
 // Manages the token 
 const tokenMiddleware = ejwt({
@@ -41,6 +69,8 @@ const tokenMiddleware = ejwt({
       return req.session.token
     }
   })
+
+
 
 //Routes
 app.get('/', (req, res) => {
@@ -74,8 +104,8 @@ app.get("/logout", tokenMiddleware ,(req, res) => {
     res.redirect("/login")
 })
 
-app.get('/newPost', (req, res) => {
-    res.render('newPost');
+app.get('/newPost', csrfProtection, (req, res) => {
+    res.render('newPost', { csrfToken: req.csrfToken() });
 });
 
 // Selects all from the table and provides the route to the homepage, Don't be thick like me and have two routes so the sql query doesn't work
@@ -89,8 +119,9 @@ app.get('/home', (req, res) => {
     });
   });
 
+
 const {body, validationResult } = require('express-validator');
-app.post('/', [
+app.post('/',  [
 
     body('title')
         .notEmpty().withMessage('Title missing')
