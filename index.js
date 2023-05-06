@@ -43,7 +43,7 @@ const port = 3000;
 
 //Setting view engine to ejs
 app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(flash());
 
 app.use(cookieParser());
@@ -52,6 +52,7 @@ app.use(cookieParser());
 app.use(session({
     secret: process.env.TOKEN_SECRET,
     resave: false,
+ xss
     saveUninitialized: false
 
 }))
@@ -60,6 +61,17 @@ app.use(session({
 
 //csrf library for creating csrf cookies in forms, requires cookie-parser
 
+=======
+    saveUninitialized: false,
+    genid: secureSessionId, // Uses the secure session ID function to generate a session ID
+    rolling: true, //Regenerates the session ID on every request
+    cookie: {
+        secure: false, //Uses only secure cookies, KEEP SET TO FALSE WHEN RUNNING LOCALLY BUT SET TO TRUE WHEN RUNNING OVER HTTPS
+        httpOnly: true, //Prevents client side JS from reading the cookie
+        maxAge: 600000 // Limits the session lifetime to 10 minutes
+      }
+    }))
+ main
 
 // Manages the token 
 const tokenMiddleware = ejwt({
@@ -81,10 +93,17 @@ app.get('/register', checkAuthenticated, (req, res) => {
     res.render('register');
 });
 
+app.get('/results', (req, res) => {
+    res.render('results');
+});
+
 app.get('/register-2fa', (req, res) => {
     //Checks to see if a QR code has been generated before rendering this page
+    console.log("Checking for qr code")
     if (!req.session.qr) {
+        console.log("Redirected to home")
       return res.redirect('/')
+      //console.log("No qr code found")
     }
     return res.render('register-2fa.ejs', { qr: req.session.qr })
   })
@@ -93,9 +112,6 @@ app.get('/login', checkAuthenticated,(req, res) => {
     res.render('login');
 });
 
-app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
-    res.render('home');
-});
 
 app.get("/logout", tokenMiddleware ,(req, res) => {
     isUserLoggedIn = false
@@ -108,18 +124,46 @@ app.get('/newPost', csrfProtection, (req, res) => {
     res.render('newPost', { csrfToken: req.csrfToken() });
 });
 
+var globalPostID;
+app.get('/editPost/:id' , async (req, res) => {
+    const postID = req.params.id;
+    try {
+        const post = await pool.query('SELECT * FROM posts WHERE id = $1', [postID]);
+        if (post.rows.length > 0) {
+            const uploadedPost = post.rows[0];
+            if (uploadedPost.user_id != req.session.user_id) {
+                console.log("Hacking detected, user tried to edit a post that doesn't exist or not their post")
+                res.redirect('/logout')
+            }
+            res.render('editPost', { uploadedPost: uploadedPost });
+            globalPostID = postID;
+        }
+        else {
+            console.log("Hacking detected, user tried to edit a post that doesn't exist or not their post")
+            res.redirect('/logout')
+        }
+    }
+    catch (error) {
+        console.log(error);
+    }
+});
+
+
+
 // Selects all from the table and provides the route to the homepage, Don't be thick like me and have two routes so the sql query doesn't work
-app.get('/home', (req, res) => {
+app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
+    console.log(req.session); // log the session object to check the user ID key
     pool.query('SELECT * FROM posts ORDER BY date DESC', (error, result) => {
       if (error) {
         throw error;
       } else {
-        res.render('home', { posts: result.rows });
+        res.render('home', { posts: result.rows, usersSessionID: req.session.user_id });
       }
     });
   });
 
 
+ xss
 const {body, validationResult } = require('express-validator');
 app.post('/',  [
 
@@ -144,6 +188,57 @@ app.post('/',  [
     const content = req.body.content;
     
     pool.query('INSERT INTO posts (title, content) VALUES ($1, $2)', [title, content], (error, result) => {
+
+
+//Adds posts to the table
+app.post('/', (req, res) => {
+    const title = req.body.title;
+    const content = req.body.content;
+    const user_id = req.session.user_id; 
+    pool.query('INSERT INTO posts (title, content, user_id) VALUES ($1, $2, $3)', [title, content, user_id], (error, result) => {
+        if (error) {
+            throw error
+        } else {
+            res.redirect('/home');
+        }
+    });   
+});
+
+//Edits posts in the table
+app.post('/updatePost', (req, res) => {
+    const title = req.body.title;
+    const content = req.body.content;
+    const user_id = req.session.user_id;
+    const post_id = globalPostID;
+    //SQL statement that modifys the post with the matching ID
+    //Make sure user id = post user id first, log out if not
+    pool.query('UPDATE posts SET title = $1, content = $2 WHERE id = $3 AND user_id = $4', [title, content, post_id, user_id], (error, result) => {
+            if (error) {
+                throw error
+            } else {
+                res.redirect('/home');
+                console.log("Post updated")
+            }
+        });
+    });
+
+//Searches for posts by name
+app.post('/search', (req, res) => {
+    const search = req.body.search;
+    pool.query('SELECT * from posts WHERE title = $1', [search], (error, result) => {
+        if (error) {
+            throw error
+        } else {
+            res.render('results', { posts: result.rows, usersSessionID: req.session.user_id });
+        }
+    });
+});
+
+//Deletes posts from the table
+app.post('/deletePost' , (req, res) => {
+    const post_id = req.body.post_id;
+    pool.query("DELETE FROM posts WHERE id = $1", [post_id], (error, result) => {
+ main
         if (error) {
             throw error
         } else {
@@ -158,7 +253,7 @@ app.post('/register', async (req, res) => {
     let {username, email, password, password2} = req.body;
     email = email.toLowerCase()
 
-    //Validate that all inputs have had information passed to them and that the passsword matches NIST standarsd
+    //Validate that all inputs have had information passed to them and that the password matches NIST standarsd
     let errors = await accountAuth.validateInput(username, email, password, password2)
 
     // Checks to see if password has passed validation
@@ -206,20 +301,29 @@ app.post('/register-2fa', (req, res) => {
     if (!req.session.userLoginDetails) {
       return res.redirect('/')
     }
-  
     const userLoginDetails = req.session.userLoginDetails,
         userPassword = req.body.password,
         code = req.body.code
     return authenticateRegister(userLoginDetails, code, req, res, '/register-2fa')
   })
 
-app.post('/login', (req, res) => {
-    //verify login
-    const userLoginDetails = req.body.username,
-        userPassword = req.body.password,
-        code = req.body.authenticationCode
-    return authenticateLogin(userLoginDetails, userPassword, code, req, res, '/login')
-  })
+  app.post('/login', (req, res) => {
+    const userLoginDetails = req.body.username;
+    const userPassword = req.body.password;
+    const code = req.body.authenticationCode;
+    authenticateLogin(userLoginDetails, userPassword, code, req, res, '/login', () => {
+        pool.query("SELECT id FROM users WHERE username = $1", [userLoginDetails], (error, results) => {
+            if (error) {
+                throw error;
+            } else {
+                //Code modified to allow for the user id to be stored in the session
+                const userID = results.rows[0].id;
+                req.session.user_id = userID;
+                res.redirect('/home');
+            }
+        });
+    });
+});
 
 async function authenticateRegister(userLoginDetails, code, req, res, returnUrl) {
     const { rows } = await pool.query('SELECT email, secret FROM users WHERE username = $1 OR email = $2', [userLoginDetails, userLoginDetails])
@@ -240,17 +344,17 @@ async function authenticateRegister(userLoginDetails, code, req, res, returnUrl)
     req.session.token = jwt.sign(rows[0].email, process.env.TOKEN_SECRET)
 
     //redirect to "private" page
+
     return res.redirect('/home')
     
 }
 
-async function authenticateLogin(userLoginDetails,password, code, req, res, returnUrl) {
+async function authenticateLogin(userLoginDetails,password, code, req, res, returnUrl, callback = () => {}) {
     const { rows } = await pool.query('SELECT email, password, salt, secret FROM users WHERE username = $1 OR email = $2', [userLoginDetails, userLoginDetails])
     if (rows.length <= 0) {
         req.flash('success_message', "The username, password and/or authentication code are incorrect. Please try again. ")
         return res.redirect(returnUrl)
     }
-    
     const seasonedPassword = rows[0].salt + password;
     bcrypt.compare(seasonedPassword, rows[0].password, (error, isMatch) => {
         if (error) {
@@ -268,9 +372,8 @@ async function authenticateLogin(userLoginDetails,password, code, req, res, retu
             req.session.userLoginDetails = null
             isUserLoggedIn = true
             req.session.token = jwt.sign(rows[0].email, process.env.TOKEN_SECRET)
-    
-            //redirect to "private" page
-            return res.redirect('/home')
+            //Changed from redirect to callback to allow for user ID to be stored in session
+            callback()
         }
     })
 }
@@ -298,4 +401,3 @@ function checkNotAuthenticated(req, res, next) {
 app.listen(port, () => {
     console.log(`Server started on port ${port}`);
 });
-
