@@ -12,7 +12,27 @@ const condiments = require("./condiments")
 const { authenticator } = require('otplib')
 const QRCode = require('qrcode');
 const accountAuth = require('./accountAuthentication')
-const crypto = require('crypto');
+const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
+const csrfProtection = csrf({
+    cookie: {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+    },
+  });
+  
+const { doubleCsrf } = require("csrf-csrf");
+
+function generateCSRFtoken()
+{
+    const token = crypto.randomBytes(16).toString('hex');
+    return token;
+}
+const csrfToken = generateCSRFtoken();
+sessionStorage.setItem('csrfToken', csrfToken);
+
+
 require('dotenv').config();
 
 // Global varaible to keep track if a user is logged into the system
@@ -26,15 +46,22 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(flash());
 
-//Generates secure session ID
-function secureSessionId() {
-    return crypto.randomBytes(64).toString('hex');
-  }
+app.use(cookieParser());
 
-//controls the session for the system, Session hijacking prevention methods are used.
+//controls the session for the system
 app.use(session({
     secret: process.env.TOKEN_SECRET,
     resave: false,
+ xss
+    saveUninitialized: false
+
+}))
+//app.use(csrfProtection);
+
+
+//csrf library for creating csrf cookies in forms, requires cookie-parser
+
+=======
     saveUninitialized: false,
     genid: secureSessionId, // Uses the secure session ID function to generate a session ID
     rolling: true, //Regenerates the session ID on every request
@@ -44,6 +71,7 @@ app.use(session({
         maxAge: 600000 // Limits the session lifetime to 10 minutes
       }
     }))
+ main
 
 // Manages the token 
 const tokenMiddleware = ejwt({
@@ -53,6 +81,8 @@ const tokenMiddleware = ejwt({
       return req.session.token
     }
   })
+
+
 
 //Routes
 app.get('/', (req, res) => {
@@ -90,8 +120,8 @@ app.get("/logout", tokenMiddleware ,(req, res) => {
     res.redirect("/login")
 })
 
-app.get('/newPost', (req, res) => {
-    res.render('newPost');
+app.get('/newPost', csrfProtection, (req, res) => {
+    res.render('newPost', { csrfToken: req.csrfToken() });
 });
 
 var globalPostID;
@@ -132,6 +162,32 @@ app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
     });
   });
 
+
+ xss
+const {body, validationResult } = require('express-validator');
+app.post('/',  [
+
+    body('title')
+        .notEmpty().withMessage('Title missing')
+        .isLength({max: 50}).withMessage('Title must be 50 characters or less')
+        .blacklist('<>').withMessage('Invalid character (<>)'),
+    
+    body('content')
+        .notEmpty().withMessage('Content missing')
+        .isLength({max: 250}).withMessage('Content must be 250 characters or less')
+        .blacklist('<>').withMessage('Invalid character (<>)'),
+], (req, res) => 
+{
+    const error = validationResult(req)
+    if (!error.isEmpty())
+    {
+        //return res.status(400).json({error: error.array()});
+        return res.render('error',{error: error.array()});
+    }
+    const title = req.body.title
+    const content = req.body.content;
+    
+    pool.query('INSERT INTO posts (title, content) VALUES ($1, $2)', [title, content], (error, result) => {
 
 
 //Adds posts to the table
@@ -182,6 +238,7 @@ app.post('/search', (req, res) => {
 app.post('/deletePost' , (req, res) => {
     const post_id = req.body.post_id;
     pool.query("DELETE FROM posts WHERE id = $1", [post_id], (error, result) => {
+ main
         if (error) {
             throw error
         } else {
@@ -229,7 +286,6 @@ app.post('/register', async (req, res) => {
                     if (err) {
                         throw err
                     }
-                    console.log("Made it this far")
                     req.session.qr = url
                     req.session.userLoginDetails = username
 
@@ -239,6 +295,7 @@ app.post('/register', async (req, res) => {
         }
     }
 });
+
 
 app.post('/register-2fa', (req, res) => {
     if (!req.session.userLoginDetails) {
@@ -294,9 +351,6 @@ async function authenticateRegister(userLoginDetails, code, req, res, returnUrl)
 
 async function authenticateLogin(userLoginDetails,password, code, req, res, returnUrl, callback = () => {}) {
     const { rows } = await pool.query('SELECT email, password, salt, secret FROM users WHERE username = $1 OR email = $2', [userLoginDetails, userLoginDetails])
-    //Creating a delay between 100ms and 1500ms for account enumeration prevention
-    var delay = Math.floor(Math.random() * 100) + 1400;
-    await new Promise(resolve => setTimeout(resolve, delay));
     if (rows.length <= 0) {
         req.flash('success_message', "The username, password and/or authentication code are incorrect. Please try again. ")
         return res.redirect(returnUrl)
@@ -313,6 +367,7 @@ async function authenticateLogin(userLoginDetails,password, code, req, res, retu
                 req.flash('success_message', "The username, password and/or authentication code are incorrect. Please try again. ")
                 return res.redirect(returnUrl)
             }
+
             req.session.qr = null
             req.session.userLoginDetails = null
             isUserLoggedIn = true
