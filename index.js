@@ -310,7 +310,7 @@ app.post('/register-2fa', (req, res) => {
 });
 
 async function authenticateRegister(userLoginDetails, code, req, res, returnUrl) {
-    const { rows } = await pool.query('SELECT email, secret FROM users WHERE username = $1 OR email = $2', [userLoginDetails, userLoginDetails])
+    const { rows } = await pool.query('SELECT email, secret FROM users WHERE username = $1', [userLoginDetails])
 
     if (rows.length <= 0) {
         req.flash('success_message', "The username, password and/or authentication code are incorrect. Please try again. ")
@@ -334,7 +334,7 @@ async function authenticateRegister(userLoginDetails, code, req, res, returnUrl)
 }
 
 async function authenticateLogin(userLoginDetails,password, code, req, res, returnUrl, callback = () => {}) {
-    const { rows } = await pool.query('SELECT email, password, salt, secret FROM users WHERE username = $1 OR email = $2', [userLoginDetails, userLoginDetails])
+    const { rows } = await pool.query('SELECT email, password, salt, secret FROM users WHERE username = $1', [ userLoginDetails])
     //Creating a delay between 100ms and 1500ms for account enumeration prevention
     var delay = Math.floor(Math.random() * 100) + 1400;
     await new Promise(resolve => setTimeout(resolve, delay));
