@@ -65,6 +65,35 @@ const tokenMiddleware = ejwt({
     }
   })
 
+//Regex function for testing that the input has only numbers, if input has non-numeric characters throw an error.
+function numbersOnly(input) {
+    if (!'^[0-9]+$'.test(input)) {
+        throw new Error('Invalid input.');
+    }
+}
+
+//Regex function for testing that the input isn't empty or contains whitespace characters, if empty throw an error.
+function ifEmpty(input) {
+    if(!/\S+/.test(input)) {
+        throw new Error('Field is empty');
+    }
+}
+
+//Regex function for testing that the two inputs are the same and if yes throw an error.
+function sameInput(input1, input2) {
+    if(input1 == input2) {
+        throw new Error('Same inputs');
+    }
+}
+
+//Prevents multiple types of clickjacking attacks
+app.use(function(req, res, next) {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    next();
+});
+
 //Routes
 app.get('/', (req, res) => {
     res.render('index');
