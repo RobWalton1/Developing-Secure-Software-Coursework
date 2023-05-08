@@ -283,7 +283,7 @@ app.post('/register-2fa', (req, res) => {
     return authenticateRegister(userLoginDetails, code, req, res, '/register-2fa')
   })
 
-  app.post('/login', (req, res) => {
+  app.post('/login', csrfProtection, (req, res) => {
     //csrf token
     // const csrfToken = req.csrfToken();
     // const submittedCsrfToken = req.body._csrf;
