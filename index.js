@@ -132,13 +132,20 @@ app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
     });
   });
 
+  //simple input sanitization function that removes html tags. add to all user input fields. using a library such as sanitizer-html would probably be better.
+  function inputSanitizer(input)
+  {
+    const sanitized = input.replace(/<[^>]*>?/gm, '');
+    return sanitized;
+  }
+
 
 
 //Adds posts to the table
 app.post('/', (req, res) => {
-    const title = req.body.title;
-    const content = req.body.content;
-    const user_id = req.session.user_id; 
+    const title = inputSanitizer(req.body.title);
+    const content = inputSanitizer(req.body.content);
+    const user_id = inputSanitizer(req.session.user_id); 
     pool.query('INSERT INTO posts (title, content, user_id) VALUES ($1, $2, $3)', [title, content, user_id], (error, result) => {
         if (error) {
             throw error
@@ -150,8 +157,8 @@ app.post('/', (req, res) => {
 
 //Edits posts in the table
 app.post('/updatePost', (req, res) => {
-    const title = req.body.title;
-    const content = req.body.content;
+    const title = inputSanitizer(req.body.title);
+    const content = inputSanitizer(req.body.content);
     const user_id = req.session.user_id;
     const post_id = globalPostID;
     //SQL statement that modifys the post with the matching ID
@@ -168,7 +175,7 @@ app.post('/updatePost', (req, res) => {
 
 //Searches for posts by name
 app.post('/search', (req, res) => {
-    const search = req.body.search;
+    const search = inputSanitizer(req.body.search);
     pool.query('SELECT * from posts WHERE title = $1', [search], (error, result) => {
         if (error) {
             throw error
@@ -180,7 +187,7 @@ app.post('/search', (req, res) => {
 
 //Deletes posts from the table
 app.post('/deletePost' , (req, res) => {
-    const post_id = req.body.post_id;
+    const post_id = inputSanizer(req.body.post_id);
     pool.query("DELETE FROM posts WHERE id = $1", [post_id], (error, result) => {
         if (error) {
             throw error
@@ -194,7 +201,7 @@ app.post('/deletePost' , (req, res) => {
 
 app.post('/register', async (req, res) => {
     let {username, email, password, password2} = req.body;
-    email = email.toLowerCase()
+    email = inputSanitizer(email.toLowerCase())
 
     //Validate that all inputs have had information passed to them and that the password matches NIST standarsd
     let errors = await accountAuth.validateInput(username, email, password, password2)
@@ -251,9 +258,9 @@ app.post('/register-2fa', (req, res) => {
   })
 
   app.post('/login', (req, res) => {
-    const userLoginDetails = req.body.username;
-    const userPassword = req.body.password;
-    const code = req.body.authenticationCode;
+    const userLoginDetails = inputSanitizer(req.body.username);
+    const userPassword = inputSanitizer(req.body.password);
+    const code = inputSanitizer(req.body.authenticationCode);
     authenticateLogin(userLoginDetails, userPassword, code, req, res, '/login', () => {
         pool.query("SELECT id FROM users WHERE username = $1", [userLoginDetails], (error, results) => {
             if (error) {
@@ -342,7 +349,10 @@ function checkNotAuthenticated(req, res, next) {
     }
 }
 
+module.exports = inputSanitizer;
+
 //Starts the server
 app.listen(port, () => {
     console.log(`Server started on port ${port}`);
 });
+
