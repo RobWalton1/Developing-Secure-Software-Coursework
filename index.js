@@ -13,8 +13,8 @@ const { authenticator } = require('otplib')
 const QRCode = require('qrcode');
 const accountAuth = require('./accountAuthentication')
 const crypto = require('crypto');
-// const csrf = require('csurf');
-// const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Global varaible to keep track if a user is logged into the system
@@ -22,20 +22,13 @@ let isUserLoggedIn = false
 
 //Local host port, Viewable on localhost:3000
 const port = 3000;
+const csrfProtection = csrf();
 
 //Setting view engine to ejs
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(flash());
 
-//CSRFs
-// app.use(cookieParser());
-// app.use(csrf({ cookie: true }));
-
-// app.use((req, res, next) => {
-//     res.locals.csrfToken = req.csrfToken();
-//     next();
-//   });
 
 //Generates secure session ID
 function secureSessionId() {
@@ -65,38 +58,15 @@ const tokenMiddleware = ejwt({
     }
   })
 
-//Regex function for testing that the input has only numbers, if input has non-numeric characters throw an error.
-function numbersOnly(input) {
-    if (!'^[0-9]+$'.test(input)) {
-        throw new Error('Invalid input.');
-    }
-}
-
-//Regex function for testing that the input isn't empty or contains whitespace characters, if empty throw an error.
-function ifEmpty(input) {
-    if(!/\S+/.test(input)) {
-        throw new Error('Field is empty');
-    }
-}
-
-//Regex function for testing that the two inputs are the same and if yes throw an error.
-function sameInput(input1, input2) {
-    if(input1 == input2) {
-        throw new Error('Same inputs');
-    }
-}
-
-//Prevents multiple types of clickjacking attacks
-app.use(function(req, res, next) {
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    next();
-});
+//csrf
+app.use(csrfProtection);
 
 //Routes
 app.get('/', (req, res) => {
-    res.render('index');
+    res.render('index', {
+        csrfToken: req.csrfToken()
+    });
+    
 });
 
 app.get('/register', checkAuthenticated, (req, res) => {
@@ -119,7 +89,7 @@ app.get('/register-2fa', (req, res) => {
   })
 
 app.get('/login', checkAuthenticated,(req, res) => {
-    res.render('login');
+    res.render('login', {csrfToken: req.csrfToken()});
 });
 
 
@@ -131,11 +101,11 @@ app.get("/logout", tokenMiddleware ,(req, res) => {
 })
 
 app.get('/newPost', (req, res) => {
-    res.render('newPost');
+    res.render('newPost', {csrfToken: req.csrfToken()});
 });
 
 var globalPostID;
-app.get('/editPost/:id' , async (req, res) => {
+app.get('/editPost/:id' , csrfProtection, async (req, res) => {
     const postID = req.params.id;
     try {
         const post = await pool.query('SELECT * FROM posts WHERE id = $1', [postID]);
@@ -145,7 +115,7 @@ app.get('/editPost/:id' , async (req, res) => {
                 console.log("Hacking detected, user tried to edit a post that doesn't exist or not their post")
                 res.redirect('/logout')
             }
-            res.render('editPost', { uploadedPost: uploadedPost });
+            res.render('editPost', { uploadedPost: uploadedPost , csrfToken: req.csrfToken()});
             globalPostID = postID;
         }
         else {
@@ -167,7 +137,7 @@ app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
       if (error) {
         throw error;
       } else {
-        res.render('home', { posts: result.rows, usersSessionID: req.session.user_id });
+        res.render('home', { posts: result.rows, usersSessionID: req.session.user_id, csrfToken: req.csrfToken() });
       }
     });
   });
@@ -212,7 +182,7 @@ app.post('/', (req, res) => {
 });
 
 //Edits posts in the table
-app.post('/updatePost', (req, res) => {
+app.post('/updatePost', csrfProtection, (req, res) => {
     const title = inputSanitizer(req.body.title);
     const content = inputSanitizer(req.body.content);
     const user_id = req.session.user_id;
@@ -236,13 +206,13 @@ app.post('/search', (req, res) => {
         if (error) {
             throw error
         } else {
-            res.render('results', { posts: result.rows, usersSessionID: req.session.user_id });
+            res.render('results', { posts: result.rows, usersSessionID: req.session.user_id ,csrfToken: req.csrfToken()});
         }
     });
 });
 
 //Deletes posts from the table
-app.post('/deletePost' , (req, res) => {
+app.post('/deletePost' , csrfProtection, (req, res) => {
     const post_id = inputSanitizer(req.body.post_id);
     pool.query("DELETE FROM posts WHERE id = $1", [post_id], (error, result) => {
         if (error) {
@@ -313,7 +283,7 @@ app.post('/register-2fa', (req, res) => {
     return authenticateRegister(userLoginDetails, code, req, res, '/register-2fa')
   })
 
-  app.post('/login', csrfProtection, (req, res) => {
+  app.post('/login', (req, res) => {
     //csrf token
     // const csrfToken = req.csrfToken();
     // const submittedCsrfToken = req.body._csrf;
@@ -339,7 +309,7 @@ app.post('/register-2fa', (req, res) => {
 });
 
 async function authenticateRegister(userLoginDetails, code, req, res, returnUrl) {
-    const { rows } = await pool.query('SELECT email, secret FROM users WHERE username = $1 OR email = $2', [userLoginDetails, userLoginDetails])
+    const { rows } = await pool.query('SELECT email, secret FROM users WHERE username = $1', [userLoginDetails])
 
     if (rows.length <= 0) {
         req.flash('success_message', "The username, password and/or authentication code are incorrect. Please try again. ")
@@ -363,7 +333,7 @@ async function authenticateRegister(userLoginDetails, code, req, res, returnUrl)
 }
 
 async function authenticateLogin(userLoginDetails,password, code, req, res, returnUrl, callback = () => {}) {
-    const { rows } = await pool.query('SELECT email, password, salt, secret FROM users WHERE username = $1 OR email = $2', [userLoginDetails, userLoginDetails])
+    const { rows } = await pool.query('SELECT email, password, salt, secret FROM users WHERE username = $1', [ userLoginDetails])
     //Creating a delay between 100ms and 1500ms for account enumeration prevention
     var delay = Math.floor(Math.random() * 100) + 1400;
     await new Promise(resolve => setTimeout(resolve, delay));
