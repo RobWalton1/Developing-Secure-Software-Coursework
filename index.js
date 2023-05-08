@@ -203,7 +203,7 @@ app.post('/search', (req, res) => {
 
 //Deletes posts from the table
 app.post('/deletePost' , (req, res) => {
-    const post_id = inputSanizer(req.body.post_id);
+    const post_id = inputSanitizer(req.body.post_id);
     pool.query("DELETE FROM posts WHERE id = $1", [post_id], (error, result) => {
         if (error) {
             throw error

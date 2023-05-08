@@ -1,4 +1,4 @@
-const accountAuth = require('/Users/jard/Documents/GitHub/Developing-Secure-Software-Coursework/accountAuthentication.js')
+const accountAuth = require('../accountAuthentication.js')
 const assert = require('assert').strict;
 require('dotenv').config();
 
