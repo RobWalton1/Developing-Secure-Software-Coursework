@@ -13,6 +13,8 @@ const { authenticator } = require('otplib')
 const QRCode = require('qrcode');
 const accountAuth = require('./accountAuthentication')
 const crypto = require('crypto');
+// const csrf = require('csurf');
+// const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Global varaible to keep track if a user is logged into the system
@@ -25,6 +27,15 @@ const port = 3000;
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(flash());
+
+//CSRFs
+// app.use(cookieParser());
+// app.use(csrf({ cookie: true }));
+
+// app.use((req, res, next) => {
+//     res.locals.csrfToken = req.csrfToken();
+//     next();
+//   });
 
 //Generates secure session ID
 function secureSessionId() {
@@ -274,6 +285,13 @@ app.post('/register-2fa', (req, res) => {
   })
 
   app.post('/login', (req, res) => {
+    //csrf token
+    // const csrfToken = req.csrfToken();
+    // const submittedCsrfToken = req.body._csrf;
+    // if (csrfToken !== submittedCsrfToken) {
+    //     return res.status(403).send('Invalid CSRF token');
+    //   }
+
     const userLoginDetails = inputSanitizer(req.body.username);
     const userPassword = inputSanitizer(req.body.password);
     const code = inputSanitizer(req.body.authenticationCode);
