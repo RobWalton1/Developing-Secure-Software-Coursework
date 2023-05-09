@@ -376,6 +376,42 @@ function checkNotAuthenticated(req, res, next) {
     }
 }
 module.exports = inputSanitizer;
+
+
+//Krystians functions//////////////////////////////////////////////////////////////////////////
+//Regex function for testing that the input has only numbers
+function numbersOnly(input) {
+    var numbers = /^[0-9]+$/;
+
+    return numbers.test(input);
+}
+
+//Regex function for testing that the input isn't empty or contains whitespace characters
+function ifEmpty(input) {
+    var empty = /^\s*$/
+
+    return empty.test(input);
+
+}
+
+//Regex function for testing if the entered email is correct
+function emailValidation(email) {
+    var re = /\S+@\S+\.\S+/;
+
+    return re.test(email);
+}
+
+//Prevents multiple types of clickjacking attacks
+app.use(function(req, res, next) {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    next();
+});
+//Krystians functions//////////////////////////////////////////////////////////////////////////
+
+
+
 //Starts the server
 app.listen(port, () => {
     console.log(`Server started on port ${port}`);
