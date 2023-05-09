@@ -19,6 +19,7 @@
         action="/register" 
         method="POST"
     >
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div>
             <input 
                 type="text" 

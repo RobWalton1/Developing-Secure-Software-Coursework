@@ -11,6 +11,7 @@
         action="/register-2fa" 
         method="POST"
     >
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <p>Download the Google Authenticator app to your phone, you can use the below links:</p>
         <ul>
             <li><b>Android: </b>https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=en_GB&gl=US&pli=1</li>

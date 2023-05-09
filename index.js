@@ -70,7 +70,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/register', checkAuthenticated, (req, res) => {
-    res.render('register');
+    res.render('register', {csrfToken: req.csrfToken()});
 });
 
 app.get('/results', (req, res) => {
@@ -85,7 +85,7 @@ app.get('/register-2fa', (req, res) => {
       return res.redirect('/')
       //console.log("No qr code found")
     }
-    return res.render('register-2fa.ejs', { qr: req.session.qr })
+    return res.render('register-2fa.ejs', { qr: req.session.qr, csrfToken: req.csrfToken()})
   })
 
 app.get('/login', checkAuthenticated,(req, res) => {
@@ -225,7 +225,7 @@ app.post('/deletePost' , csrfProtection, (req, res) => {
 
 
 
-app.post('/register', async (req, res) => {
+app.post('/register', csrfProtection, async (req, res) => {
     let {username, email, password, password2} = req.body;
     email = inputSanitizer(email.toLowerCase())
 
@@ -234,7 +234,7 @@ app.post('/register', async (req, res) => {
 
     // Checks to see if password has passed validation
     if (errors.length > 0) {
-        res.render("register", errors)
+        res.render("register", errors, {csrfToken: req.csrfToken()})
     } else {
         // Generate the salt
         let salt = condiments.generateSalt(64)
@@ -246,11 +246,11 @@ app.post('/register', async (req, res) => {
         //Verify that no other user is currently using that username
         if(await accountAuth.uniqueUsername(username)) {
             errors.push("Username already registered")
-            res.render("register", {errors})
+            res.render("register", {errors, csrfToken: req.csrfToken()})
         //Verify that no other user is currently using email
         } else if(await accountAuth.uniqueEmail(email)){
             errors.push("Email already registered")
-            res.render("register", {errors})
+            res.render("register", {errors, csrfToken: req.csrfToken()})
         } else {
             pool.query("INSERT INTO users (username, email, password, salt, secret) VALUES ($1, $2, $3, $4, $5) RETURNING id",
             [username, email, hashedPassword, salt, userSecret], (error, results) => {
@@ -273,7 +273,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-app.post('/register-2fa', (req, res) => {
+app.post('/register-2fa', csrfProtection, (req, res) => {
     if (!req.session.userLoginDetails) {
       return res.redirect('/')
     }
@@ -283,13 +283,7 @@ app.post('/register-2fa', (req, res) => {
     return authenticateRegister(userLoginDetails, code, req, res, '/register-2fa')
   })
 
-  app.post('/login', (req, res) => {
-    //csrf token
-    // const csrfToken = req.csrfToken();
-    // const submittedCsrfToken = req.body._csrf;
-    // if (csrfToken !== submittedCsrfToken) {
-    //     return res.status(403).send('Invalid CSRF token');
-    //   }
+  app.post('/login', csrfProtection, (req, res) => {
 
     const userLoginDetails = inputSanitizer(req.body.username);
     const userPassword = inputSanitizer(req.body.password);
