@@ -29,6 +29,14 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(flash());
 
+//Prevents multiple types of clickjacking attacks
+app.use(function(req, res, next) {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    next();
+});
+
 
 //Generates secure session ID
 function secureSessionId() {
@@ -401,13 +409,7 @@ function emailValidation(email) {
     return re.test(email);
 }
 
-//Prevents multiple types of clickjacking attacks
-app.use(function(req, res, next) {
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    next();
-});
+
 //Krystians functions//////////////////////////////////////////////////////////////////////////
 
 
