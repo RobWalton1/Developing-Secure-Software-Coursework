@@ -242,7 +242,7 @@ app.post('/register', csrfProtection, async (req, res) => {
 
     // Checks to see if password has passed validation
     if (errors.length > 0) {
-        res.render("register", errors, {csrfToken: req.csrfToken()})
+        res.render("register",{errors, csrfToken: req.csrfToken()})
     } else {
         // Generate the salt
         let salt = condiments.generateSalt(64)
