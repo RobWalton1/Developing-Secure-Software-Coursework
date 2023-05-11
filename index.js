@@ -17,6 +17,8 @@ const csrf = require('csurf');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
+const { decryption, encryption } = require('./databaseEncryption.js');
+
 // Global varaible to keep track if a user is logged into the system
 let isUserLoggedIn = false
 
@@ -37,7 +39,6 @@ app.use(function(req, res, next) {
     next();
 });
 
-
 //Generates secure session ID
 function secureSessionId() {
     return crypto.randomBytes(64).toString('hex');
@@ -54,7 +55,7 @@ app.use(session({
         secure: false, //Uses only secure cookies, KEEP SET TO FALSE WHEN RUNNING LOCALLY BUT SET TO TRUE WHEN RUNNING OVER HTTPS
         httpOnly: true, //Prevents client side JS from reading the cookie
         maxAge: 600000 // Limits the session lifetime to 10 minutes
-      }
+    }
     }))
 
 // Manages the token 
@@ -64,7 +65,7 @@ const tokenMiddleware = ejwt({
     getToken: (req) => {
       return req.session.token
     }
-  })
+})
 
 //csrf
 app.use(csrfProtection);
@@ -137,7 +138,6 @@ app.get('/editPost/:id' , csrfProtection, async (req, res) => {
 });
 
 
-
 // Selects all from the table and provides the route to the homepage, Don't be thick like me and have two routes so the sql query doesn't work
 app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
     console.log(req.session); // log the session object to check the user ID key
@@ -180,7 +180,9 @@ app.post('/', (req, res) => {
     const title = inputSanitizer(req.body.title);
     const content = inputSanitizer(req.body.content);
     const user_id = inputSanitizer(req.session.user_id); 
-    pool.query('INSERT INTO posts (title, content, user_id) VALUES ($1, $2, $3)', [title, content, user_id], (error, result) => {
+    const encryptedTitle = encryption(title);
+    const encryptedContent = encryption(content);
+    pool.query('INSERT INTO posts (title, content, user_id) VALUES ($1, $2, $3)', [encryptedTitle, encryptedContent, user_id], (error, result) => {
         if (error) {
             throw error
         } else {
