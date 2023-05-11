@@ -1,5 +1,7 @@
 //Required modules
 const { pool } = require("./dbConfig");
+const { ifEmpty, emailValidation } = require("./inputValidation");
+
 require('dotenv').config();
 
 async function validateInput(username=null, email=null, password=null, password2=null) {
@@ -24,6 +26,21 @@ async function validateInput(username=null, email=null, password=null, password2
     }
     if (password != password2) {
         errors.push("Passwords do not match")
+    }
+    if (!emailValidation(email)) {
+        errors.push("Email is not valid")
+    }
+    if (ifEmpty(username)) {
+        errors.push("Username is empty or only contains whitespaces")
+    }
+    if (ifEmpty(password)) {
+        errors.push("Password is empty or only contains whitespaces")
+    }
+    if (ifEmpty(password2)) {
+        errors.push("Confirm Password is empty or only contains whitespaces")
+    }
+    if (ifEmpty(email)) {
+        errors.push("Email is empty or only contains whitespaces")
     }
     return errors
 }

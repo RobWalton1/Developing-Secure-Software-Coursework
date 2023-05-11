@@ -15,6 +15,8 @@ const accountAuth = require('./accountAuthentication')
 const crypto = require('crypto');
 const csrf = require('csurf');
 const cookieParser = require('cookie-parser');
+const clickJacking = require('./clickJacking');
+const inputValidation = require('./inputValidation');
 require('dotenv').config();
 
 // Global varaible to keep track if a user is logged into the system
@@ -28,6 +30,7 @@ const csrfProtection = csrf();
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(flash());
+app.use(clickJacking);
 
 //Prevents multiple types of clickjacking attacks
 app.use(function(req, res, next) {
@@ -296,6 +299,18 @@ app.post('/register-2fa', csrfProtection, (req, res) => {
     const userLoginDetails = inputSanitizer(req.body.username);
     const userPassword = inputSanitizer(req.body.password);
     const code = inputSanitizer(req.body.authenticationCode);
+
+    if (!inputValidation.commonSqlPhrases(userLoginDetails)) {
+        return res.status(400).json({err:"SQL Injection Detected in USERNAME"})
+    } else if (!inputValidation.commonSqlPhrases(userPassword)) {
+        return res.status(400).json({err:"SQL Injection Detected in PASSWORD"})
+    } else if (!inputValidation.commonSqlPhrases(code)) {
+        return res.status(400).json({err:"SQL Injection Detected in CODE"})
+    } else if (!inputValidation.numbersOnly(code)) {
+        return res.status(400).json({err:"Non-Numeric Characters in CODE"})
+    } else {
+        console.log("Success!")
+    }
     authenticateLogin(userLoginDetails, userPassword, code, req, res, '/login', () => {
         pool.query("SELECT id FROM users WHERE username = $1", [userLoginDetails], (error, results) => {
             if (error) {
