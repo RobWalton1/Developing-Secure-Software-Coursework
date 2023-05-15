@@ -15,6 +15,8 @@ const accountAuth = require('./accountAuthentication')
 const crypto = require('crypto');
 const csrf = require('csurf');
 const cookieParser = require('cookie-parser');
+const clickJacking = require('./clickJacking');
+const inputValidation = require('./inputValidation');
 require('dotenv').config();
 
 const { decryption, encryption } = require('./databaseEncryption.js');
@@ -28,8 +30,10 @@ const csrfProtection = csrf();
 
 //Setting view engine to ejs
 app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({ extended: true }));
+//Limit the amount of data that can be sent to the server, 10kb = 10,000 characters
+app.use(bodyParser.urlencoded({ extended: true, limit: '10kb' }));
 app.use(flash());
+app.use(clickJacking);
 
 //Prevents multiple types of clickjacking attacks
 app.use(function(req, res, next) {
@@ -54,7 +58,8 @@ app.use(session({
     cookie: {
         secure: false, //Uses only secure cookies, KEEP SET TO FALSE WHEN RUNNING LOCALLY BUT SET TO TRUE WHEN RUNNING OVER HTTPS
         httpOnly: true, //Prevents client side JS from reading the cookie
-        maxAge: 600000 // Limits the session lifetime to 10 minutes
+        maxAge: 600000, // Limits the session lifetime to 10 minutes
+        sameSite: 'lax' //Prevents CSRF attacks and helps prevent session hijacking
     }
     }))
 
@@ -70,7 +75,7 @@ const tokenMiddleware = ejwt({
 //csrf
 app.use(csrfProtection);
 
-//Routes
+//Routes for each page, 
 app.get('/', (req, res) => {
     res.render('index', {
         csrfToken: req.csrfToken()
@@ -124,6 +129,8 @@ app.get('/editPost/:id' , csrfProtection, async (req, res) => {
                 console.log("Hacking detected, user tried to edit a post that doesn't exist or not their post")
                 res.redirect('/logout')
             }
+            uploadedPost.title = decryption(uploadedPost.title);
+            uploadedPost.content = decryption(uploadedPost.content);
             res.render('editPost', { uploadedPost: uploadedPost , csrfToken: req.csrfToken()});
             globalPostID = postID;
         }
@@ -140,11 +147,16 @@ app.get('/editPost/:id' , csrfProtection, async (req, res) => {
 
 // Selects all from the table and provides the route to the homepage, Don't be thick like me and have two routes so the sql query doesn't work
 app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
-    console.log(req.session); // log the session object to check the user ID key
     pool.query('SELECT * FROM posts ORDER BY date DESC', (error, result) => {
       if (error) {
         throw error;
       } else {
+    // Decrypts the title and content of each post
+      result.rows.forEach(row => {
+        row.title = decryption(row.title);
+        row.content = decryption(row.content);
+      });
+
         res.render('home', { posts: result.rows, usersSessionID: req.session.user_id, csrfToken: req.csrfToken() });
       }
     });
@@ -153,8 +165,13 @@ app.get('/home', checkNotAuthenticated, tokenMiddleware, (req, res) => {
   //simple input sanitization function that removes html tags. add to all user input fields. using a library such as sanitizer-html would probably be better.
   function inputSanitizer(input)
   {
+    if (typeof input == 'string'){
     const sanitized = input.replace(/<[^>]*>?/gm, '');
     return sanitized;
+    }
+    else {
+      return input;
+    }
   }
 
   
@@ -197,9 +214,11 @@ app.post('/updatePost', csrfProtection, (req, res) => {
     const content = inputSanitizer(req.body.content);
     const user_id = req.session.user_id;
     const post_id = globalPostID;
+    const encryptedTitle = encryption(title);
+    const encryptedContent = encryption(content);
     //SQL statement that modifys the post with the matching ID
     //Make sure user id = post user id first, log out if not
-    pool.query('UPDATE posts SET title = $1, content = $2 WHERE id = $3 AND user_id = $4', [title, content, post_id, user_id], (error, result) => {
+    pool.query('UPDATE posts SET title = $1, content = $2 WHERE id = $3 AND user_id = $4', [encryptedTitle, encryptedContent, post_id, user_id], (error, result) => {
             if (error) {
                 throw error
             } else {
@@ -244,7 +263,7 @@ app.post('/register', csrfProtection, async (req, res) => {
 
     // Checks to see if password has passed validation
     if (errors.length > 0) {
-        res.render("register", errors, {csrfToken: req.csrfToken()})
+        res.render("register",{errors, csrfToken: req.csrfToken()})
     } else {
         // Generate the salt
         let salt = condiments.generateSalt(64)
@@ -298,6 +317,18 @@ app.post('/register-2fa', csrfProtection, (req, res) => {
     const userLoginDetails = inputSanitizer(req.body.username);
     const userPassword = inputSanitizer(req.body.password);
     const code = inputSanitizer(req.body.authenticationCode);
+
+    if (!inputValidation.commonSqlPhrases(userLoginDetails)) {
+        return res.status(400).json({err:"SQL Injection Detected in USERNAME"})
+    } else if (!inputValidation.commonSqlPhrases(userPassword)) {
+        return res.status(400).json({err:"SQL Injection Detected in PASSWORD"})
+    } else if (!inputValidation.commonSqlPhrases(code)) {
+        return res.status(400).json({err:"SQL Injection Detected in CODE"})
+    } else if (!inputValidation.numbersOnly(code)) {
+        return res.status(400).json({err:"Non-Numeric Characters in CODE"})
+    } else {
+        console.log("Success!")
+    }
     authenticateLogin(userLoginDetails, userPassword, code, req, res, '/login', () => {
         pool.query("SELECT id FROM users WHERE username = $1", [userLoginDetails], (error, results) => {
             if (error) {

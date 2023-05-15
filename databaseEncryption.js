@@ -3,8 +3,8 @@ const algorithmUsed = 'aes-256-cbc';
 const key = crypto.randomBytes(32);
 //Function to decrypt the data from our postgres database
 function decryption(text) {
-    const iv = Buffer.from(parts.shift(), 'hex');
     const parts = text.split(':');
+    const iv = Buffer.from(parts.shift(), 'hex');
     const encryptedText = Buffer.from(parts.join(':'), 'hex');
     const decipher = crypto.createDecipheriv(algorithmUsed, key, iv);
     return Buffer.concat([decipher.update(encryptedText), decipher.final()]).toString();
